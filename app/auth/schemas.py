@@ -23,3 +23,17 @@ class UserResponse(BaseModel):
 
     # Pydantic v2 configuration for ORM mapping
     model_config = ConfigDict(from_attributes=True)
+
+class UserLogin(BaseModel):
+    """
+    Schema for validating user login requests.
+    """
+    email: EmailStr
+    password: str = Field(..., min_length=6, max_length=255)
+
+class Token(BaseModel):
+    """
+    Schema representing the structure of a returned access token.
+    """
+    access_token: str
+    token_type: str = "bearer"
