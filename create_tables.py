@@ -3,6 +3,8 @@ from app.database import Base, engine
 # Import all models to ensure they are registered on the Base metadata
 from app.auth.models import User
 from app.candidate.models import CandidateProfile
+from app.startup.models import StartupProfile
+
 
 def create_tables():
     """

@@ -8,6 +8,7 @@ from app.database.base import Base
 
 if TYPE_CHECKING:
     from app.candidate.models import CandidateProfile
+    from app.startup.models import StartupProfile
 
 class User(Base):
     """
@@ -33,6 +34,14 @@ class User(Base):
     # One-to-one relationship with CandidateProfile
     candidate_profile: Mapped[Optional["CandidateProfile"]] = relationship(
         "CandidateProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+    # One-to-one relationship with StartupProfile
+    startup_profile: Mapped[Optional["StartupProfile"]] = relationship(
+        "StartupProfile",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan"
