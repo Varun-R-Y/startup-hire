@@ -43,3 +43,66 @@ def create_profile(
     db.refresh(new_profile)
 
     return new_profile
+
+
+@router.get("/profile", response_model=CandidateProfileResponse)
+def get_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve the candidate profile of the authenticated user.
+    """
+    # 1. Verify the authenticated user is a candidate
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only candidates can access a candidate profile."
+        )
+
+    # 2. Retrieve the profile from the database
+    profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.id).first()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found."
+        )
+
+    return profile
+
+
+@router.put("/profile", response_model=CandidateProfileResponse)
+def update_profile(
+    profile_in: CandidateProfileCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update the candidate profile of the authenticated user.
+    """
+    # 1. Verify the authenticated user is a candidate
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only candidates can update a candidate profile."
+        )
+
+    # 2. Retrieve the existing profile from the database
+    profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.id).first()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found."
+        )
+
+    # 3. Update all editable fields from the Pydantic schema
+    for key, value in profile_in.model_dump().items():
+        setattr(profile, key, value)
+
+    # 4. Save changes to PostgreSQL and refresh the object
+    db.commit()
+    db.refresh(profile)
+
+    return profile
+
+
