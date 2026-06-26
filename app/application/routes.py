@@ -8,7 +8,9 @@ from app.candidate.models import CandidateProfile
 from app.startup.models import StartupProfile
 from app.jobs.models import JobPosting
 from app.application.models import Application
-from app.application.schemas import ApplicationResponse
+from app.application.schemas import ApplicationResponse, RankedCandidateResponse
+from app.parser.models import ParsedResume
+from app.matching.service import calculate_match_score
 
 router = APIRouter(tags=["Application"])
 
@@ -135,3 +137,80 @@ def get_job_applications(
     # 4. Fetch applications for the job
     apps = db.query(Application).filter(Application.job_posting_id == job_id).all()
     return apps
+
+
+@router.get("/startup/jobs/{job_id}/rank-candidates", response_model=list[RankedCandidateResponse])
+def rank_candidates(
+    job_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Rank all candidates who applied to a job posting, sorted descending by match score.
+    """
+    # 1. Protect and verify user role
+    if current_user.role != "startup":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only startups can view candidate rankings."
+        )
+
+    # 2. Retrieve StartupProfile
+    startup_profile = db.query(StartupProfile).filter(StartupProfile.user_id == current_user.id).first()
+    if not startup_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Startup profile not found."
+        )
+
+    # 3. Retrieve JobPosting and verify ownership
+    job = db.query(JobPosting).filter(
+        JobPosting.id == job_id,
+        JobPosting.startup_profile_id == startup_profile.id
+    ).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job posting not found or does not belong to this startup."
+        )
+
+    # 4. Retrieve all Application records for that job
+    apps = db.query(Application).filter(Application.job_posting_id == job_id).all()
+
+    ranked_list = []
+    for app in apps:
+        # Load CandidateProfile
+        candidate_profile = app.candidate_profile
+        
+        # Load ParsedResume (one-to-one relationship)
+        parsed_resume = candidate_profile.parsed_resume
+        if parsed_resume is None:
+            continue
+
+        # Calculate matching score using the service
+        score_details = calculate_match_score(job, candidate_profile, parsed_resume)
+
+        # Build response item
+        ranked_list.append({
+            "candidate_profile_id": candidate_profile.id,
+            "candidate_name": candidate_profile.user.name,
+            "score": score_details["score"],
+            "skill_score": score_details["skill_score"],
+            "experience_score": score_details["experience_score"],
+            "location_score": score_details["location_score"],
+            "matched_skills": score_details["matched_skills"],
+            "missing_skills": score_details["missing_skills"]
+        })
+
+    # Sort descending by score, breaking ties using skill score, then experience score
+    ranked_list.sort(
+        key=lambda x: (
+            x["score"],
+            x["skill_score"],
+            x["experience_score"]
+        ),
+        reverse=True
+    )
+
+    return ranked_list
+

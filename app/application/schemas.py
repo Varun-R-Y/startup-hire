@@ -14,3 +14,21 @@ class ApplicationResponse(BaseModel):
 
     # Pydantic v2 configuration to allow ORM serialization
     model_config = ConfigDict(from_attributes=True)
+
+
+class RankedCandidateResponse(BaseModel):
+    """
+    Pydantic schema for returning candidate ranking information.
+    """
+    candidate_profile_id: int
+    candidate_name: str
+    score: int
+    skill_score: int
+    experience_score: int
+    location_score: int
+    matched_skills: list[str]
+    missing_skills: list[str]
+
+    # Pydantic v2 configuration to allow ORM serialization
+    model_config = ConfigDict(from_attributes=True)
+
