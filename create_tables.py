@@ -6,6 +6,7 @@ from app.candidate.models import CandidateProfile
 from app.startup.models import StartupProfile
 from app.parser.models import ParsedResume
 from app.jobs.models import JobPosting
+from app.application.models import Application
 
 
 def create_tables():

@@ -8,6 +8,7 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from app.auth.models import User
     from app.parser.models import ParsedResume
+    from app.application.models import Application
 
 
 class CandidateProfile(Base):
@@ -56,5 +57,12 @@ class CandidateProfile(Base):
         "ParsedResume",
         back_populates="candidate_profile",
         uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+    # One-to-many relationship with Application
+    applications: Mapped[list["Application"]] = relationship(
+        "Application",
+        back_populates="candidate_profile",
         cascade="all, delete-orphan"
     )
