@@ -4,6 +4,7 @@ from app.database import Base, engine
 from app.auth.models import User
 from app.candidate.models import CandidateProfile
 from app.startup.models import StartupProfile
+from app.parser.models import ParsedResume
 
 
 def create_tables():

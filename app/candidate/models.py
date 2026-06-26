@@ -7,6 +7,7 @@ from app.database.base import Base
 
 if TYPE_CHECKING:
     from app.auth.models import User
+    from app.parser.models import ParsedResume
 
 
 class CandidateProfile(Base):
@@ -39,13 +40,21 @@ class CandidateProfile(Base):
     linkedin_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     github_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     portfolio_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    resume_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    resume_path: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False
+        nullable=True
     )
 
     # One-to-one relationship with User
     user: Mapped["User"] = relationship("User", back_populates="candidate_profile")
+
+    # One-to-one relationship with ParsedResume
+    parsed_resume: Mapped[Optional["ParsedResume"]] = relationship(
+        "ParsedResume",
+        back_populates="candidate_profile",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )

@@ -1,0 +1,68 @@
+import os
+import pdfplumber
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.parser.models import ParsedResume
+from app.database import get_db
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
+from app.candidate.models import CandidateProfile
+
+router = APIRouter(prefix="/candidate", tags=["Parser"])
+
+
+@router.post("/parse-resume")
+def parse_resume(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Extract raw plain text from the candidate's uploaded resume PDF.
+    """
+    # 1. Protect the endpoint using get_current_user. Only candidates may parse resumes.
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only candidates can parse resumes."
+        )
+
+    # 2. Retrieve the authenticated user's CandidateProfile.
+    profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found."
+        )
+
+    # 3. If resume_path is NULL or empty, return HTTP 400 ("Resume not uploaded").
+    if not profile.resume_path:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resume not uploaded"
+        )
+
+    # 4. Check if file actually exists on disk.
+    if not os.path.exists(profile.resume_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume file not found on disk."
+        )
+
+    # 5. Extract plain text using pdfplumber.
+    extracted_text = ""
+    try:
+        with pdfplumber.open(profile.resume_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    extracted_text += page_text + "\n"
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error reading PDF file: {str(e)}"
+        )
+
+    # 6. Return the extracted text.
+    return {
+        "text": extracted_text.strip()
+    }

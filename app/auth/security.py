@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
-from jose import JWTError, jwt
+from typing import Optional
+from jose import jwt
 from passlib.context import CryptContext
 from app.config import settings
 
@@ -21,7 +22,7 @@ def verify_password(
     """
     return pwd_context.verify(password, hashed_password)
 
-def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
     Creates a JWT access token encoding the input data and including an expiration time.
     """

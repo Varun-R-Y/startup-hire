@@ -19,7 +19,7 @@ class CandidateProfileBase(BaseModel):
     linkedin_url: Optional[str] = Field(default=None, max_length=255, description="LinkedIn profile URL")
     github_url: Optional[str] = Field(default=None, max_length=255, description="GitHub profile URL")
     portfolio_url: Optional[str] = Field(default=None, max_length=255, description="Portfolio website URL")
-    resume_path: str = Field(..., max_length=255, description="Path to the uploaded resume file")
+    resume_path: Optional[str] = Field(default=None,max_length=255,description="Path to the uploaded resume file")
 
 
 class CandidateProfileCreate(CandidateProfileBase):
@@ -40,3 +40,8 @@ class CandidateProfileResponse(CandidateProfileBase):
 
     # Pydantic v2 configuration to allow ORM serialization
     model_config = ConfigDict(from_attributes=True)
+
+class ResumeUploadResponse(BaseModel):
+    message: str
+    resume_path: str
+
