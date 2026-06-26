@@ -7,6 +7,7 @@ from app.database.base import Base
 
 if TYPE_CHECKING:
     from app.auth.models import User
+    from app.jobs.models import JobPosting
 
 
 class StartupProfile(Base):
@@ -40,3 +41,10 @@ class StartupProfile(Base):
 
     # One-to-one relationship with User
     user: Mapped["User"] = relationship("User", back_populates="startup_profile")
+
+    # One-to-many relationship with JobPosting
+    job_postings: Mapped[list["JobPosting"]] = relationship(
+        "JobPosting",
+        back_populates="startup_profile",
+        cascade="all, delete-orphan"
+    )

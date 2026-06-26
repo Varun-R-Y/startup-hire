@@ -5,6 +5,7 @@ from app.auth.models import User
 from app.candidate.models import CandidateProfile
 from app.startup.models import StartupProfile
 from app.parser.models import ParsedResume
+from app.jobs.models import JobPosting
 
 
 def create_tables():
