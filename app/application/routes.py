@@ -8,9 +8,8 @@ from app.candidate.models import CandidateProfile
 from app.startup.models import StartupProfile
 from app.jobs.models import JobPosting
 from app.application.models import Application
-from app.application.schemas import ApplicationResponse, RankedCandidateResponse
-from app.parser.models import ParsedResume
-from app.matching.service import calculate_match_score
+from app.application.schemas import ApplicationResponse, RankedCandidateResponse, ExplainMatchResponse
+from app.matching.service import calculate_match_score, generate_match_summary
 
 router = APIRouter(tags=["Application"])
 
@@ -213,4 +212,88 @@ def rank_candidates(
     )
 
     return ranked_list
+
+
+@router.get("/startup/jobs/{job_id}/candidate/{candidate_profile_id}/explanation", response_model=ExplainMatchResponse)
+def explain_candidate_match(
+    job_id: int,
+    candidate_profile_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Explain the match score for a specific candidate who applied to a startup's job posting.
+    """
+    # 1. Enforce Startup only role
+    if current_user.role != "startup":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only startups can view match explanations."
+        )
+
+    # 2. Retrieve StartupProfile
+    startup_profile = db.query(StartupProfile).filter(StartupProfile.user_id == current_user.id).first()
+    if not startup_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Startup profile not found."
+        )
+
+    # 3. Retrieve JobPosting and verify ownership
+    job = db.query(JobPosting).filter(
+        JobPosting.id == job_id,
+        JobPosting.startup_profile_id == startup_profile.id
+    ).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job posting not found or does not belong to this startup."
+        )
+
+    # 4. Load CandidateProfile
+    candidate_profile = db.query(CandidateProfile).filter(CandidateProfile.id == candidate_profile_id).first()
+    if not candidate_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found."
+        )
+
+    # 5. Verify candidate applied
+    application = db.query(Application).filter(
+        Application.candidate_profile_id == candidate_profile_id,
+        Application.job_posting_id == job_id
+    ).first()
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Candidate has not applied to this job."
+        )
+
+    # 6. Load ParsedResume
+    parsed_resume = candidate_profile.parsed_resume
+    if not parsed_resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Parsed resume not found for this candidate."
+        )
+
+    # 7. Call calculate_match_score()
+    score_details = calculate_match_score(job, candidate_profile, parsed_resume)
+
+    # 8. Build a human-readable summary via service
+    summary = generate_match_summary(job, candidate_profile, score_details)
+
+    # 9. Return ExplainMatchResponse
+    return ExplainMatchResponse(
+        candidate_name=candidate_profile.user.name,
+        overall_score=score_details["score"],
+        skill_score=score_details["skill_score"],
+        experience_score=score_details["experience_score"],
+        location_score=score_details["location_score"],
+        matched_skills=score_details["matched_skills"],
+        missing_skills=score_details["missing_skills"],
+        summary=summary
+    )
+
+
 

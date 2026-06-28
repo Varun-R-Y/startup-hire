@@ -112,3 +112,42 @@ def calculate_match_score(job, candidate_profile, parsed_resume) -> dict:
         "missing_skills": missing_skills
     }
 
+
+def generate_match_summary(job, candidate_profile, score_details) -> str:
+    """
+    Generates a human-readable match explanation summary.
+    """
+    summary_parts = []
+
+    # 1. Overall sentence
+    candidate_name = candidate_profile.user.name if (candidate_profile.user and candidate_profile.user.name) else "Candidate"
+    summary_parts.append(
+        f"{candidate_name} has an overall match score of {score_details['score']}/100."
+    )
+
+    # 2. Skills Match
+    skill_pct = int((score_details['skill_score'] / 70.0) * 100) if score_details['skill_score'] > 0 else 0
+    matched_str = ", ".join(score_details['matched_skills']) if score_details['matched_skills'] else "None"
+    missing_str = ", ".join(score_details['missing_skills']) if score_details['missing_skills'] else "None"
+    summary_parts.append(
+        f"Skills Match: {score_details['skill_score']}/70 ({skill_pct}%). "
+        f"Matched skills: {matched_str}. "
+        f"Missing skills: {missing_str}."
+    )
+
+    # 3. Experience Match
+    summary_parts.append(
+        f"Experience Match: {score_details['experience_score']}/20. "
+        f"Candidate has {candidate_profile.years_experience} years of experience, while the job requires {job.experience_required} years."
+    )
+
+    # 4. Location Match
+    if score_details['location_score'] > 0:
+        loc_str = "✓ Candidate location matches the job location."
+    else:
+        loc_str = "✗ Candidate location differs from the job location."
+    summary_parts.append(loc_str)
+
+    return " ".join(summary_parts)
+
+

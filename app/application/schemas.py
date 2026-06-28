@@ -32,3 +32,21 @@ class RankedCandidateResponse(BaseModel):
     # Pydantic v2 configuration to allow ORM serialization
     model_config = ConfigDict(from_attributes=True)
 
+
+class ExplainMatchResponse(BaseModel):
+    """
+    Pydantic schema for returning candidate match score explanation.
+    """
+    candidate_name: str
+    overall_score: int
+    skill_score: int
+    experience_score: int
+    location_score: int
+    matched_skills: list[str]
+    missing_skills: list[str]
+    summary: str
+
+    # Pydantic v2 configuration to allow ORM serialization
+    model_config = ConfigDict(from_attributes=True)
+
+
